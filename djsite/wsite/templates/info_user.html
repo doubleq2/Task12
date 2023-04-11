@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>user</title>
+</head>
+<body>
+
+    <form method="POST" action="{% url 'logout' user_link=user.link%}">
+        {% csrf_token %}
+        <button type="submit">выйти</button>
+    </form>
+    
+    <form method="POST" action="{% url 'sub_user' user_link=user.link %}">
+        {% csrf_token %}
+        <button type="submit">подписаться/отписаться</button>
+    </form>
+    <h1>{{user.sub_count}}</h1>
+
+    <h1>{{ user.username }}</h1>
+    <h1>{{ user.email }}</h1>
+    <h1>{{ user.bio }}</h1>
+    <h1>{{ user.first_name }}</h1>
+    <h1>{{ user.last_name }}</h1>
+
+    <form action="http://127.0.0.1:8000/upload/">
+        <button>Добавить фото</button>
+    </form>
+
+
+    {% for photo in photos %}
+    <div>
+        <h1>{{photo.title}}</h1>
+        <img src="{{ photo.image.url }}" alt="{{ photo.title }}">
+        <form method="POST" action="{% url 'delete_photo' user_link=user.link photo_id=photo.id %}">
+            {% csrf_token %}
+            <button type="submit">удалить фото</button>
+        </form>
+        <form method="POST" action="{% url 'like_photo' user_link=user.link photo_id=photo.id %}">
+            {% csrf_token %}
+            <button type="submit">лайк</button>
+        </form>
+        <h1>{{photo.like_count}}</h1>
+    </div>
+    {% endfor %}    
+</body>
+</html>
