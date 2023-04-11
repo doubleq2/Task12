@@ -1,20 +1,20 @@
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from . import views
+from wsite.views import *
 
 urlpatterns = [
-    path('', views.home),
-    path('register/', views.index),
-    path("register/create_user/", views.create_user),
-    path("user/<str:user_link>", views.user_inf, name='user_inf'),
-    path("user/<str:user_link>/sub", views.sub, name='sub_user'),
-    path('user/<str:user_link>/delete_photo/<int:photo_id>', views.delete_photo, name='delete_photo'),
-    path('user/<str:user_link>/like_photo/<int:photo_id>', views.like_photo, name='like_photo'),
-    path("login_user/",views.log),
-    path("login_user/loguser/",views.login_user),
-    path('upload/', views.image_upload_view),
-    path('user/<str:user_link>/logout', views.logout_user, name='logout')
+    path('', HomePage.as_view()),
+    path('register/', IndexUser.as_view()),
+    path("register/create_user/", CreateUser.as_view()),
+    path("user/<str:user_link>", UserInf.as_view(), name='user_inf'),
+    path("user/<str:user_link>/sub", SubUser.as_view(), name='sub_user'),
+    path('user/<str:user_link>/delete_photo/<int:photo_id>', DeletePhoto.as_view(), name='delete_photo'),
+    path('user/<str:user_link>/like_photo/<int:photo_id>', LikePhoto.as_view(), name='like_photo'),
+    path("login_user/",Log.as_view()),
+    path("login_user/loguser/",LoginUser.as_view()),
+    path('upload/', ImageUpload.as_view()),
+    path('user/<str:user_link>/logout', logout_user, name='logout')
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL,

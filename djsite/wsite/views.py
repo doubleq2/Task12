@@ -1,122 +1,99 @@
-from django.http import  HttpResponse, HttpResponseNotFound, HttpResponseRedirect
+from django.http import  HttpResponse, HttpResponseNotFound
 from django.shortcuts import get_object_or_404, redirect, render
-from .models import User, Photo, Likes, Subscriptions
-from django.contrib.auth import authenticate, login
-from django.contrib.auth import logout
-from .forms import ImageForm
-import os
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+from django.views import View
+from django.utils.decorators import method_decorator
+from wsite.models import User, Photo, Likes, Subscriptions
+from wsite.services import *
 
-def index(request):
-    users = User.objects.all()
-    return render(request,"index.html",{'users':users})
+class IndexUser(View):
+    def get(self,request):
+        users = User.objects.all()
+        return render(request,"index.html",{'users':users})
 
-def create_user(request):
-    if request.method == "POST":
+class CreateUser(View):
+    def post(self,request):
         user = User()
-        user.username = request.POST.get("username")
-        user.email = request.POST.get("email")
-        user.bio = request.POST.get("bio")
-        user.link = request.POST.get("link")
-        user.first_name = request.POST.get("first_name")
-        user.last_name = request.POST.get("last_name")
-        if user.link == '':
-            user.link = user.username
-        user.set_password(request.POST.get("password"))
-        user.save()
-        return redirect("http://127.0.0.1:8000/user/"+user.link)
-    return HttpResponseRedirect("/")
+        create_user(request,user)
+        return redirect(f"/user/{user.link}")
 
-def user_inf(request,user_link):
-    try:
-        user = User.objects.get(link = user_link)
-        images = Photo.objects.filter(user_id=user.id).all()
-        if request.method == "delete":
-            img = Photo.objects.get(user_id = user.id)
-            img.delete()
-            return HttpResponseRedirect("/")
-        return render(request, "info_user.html",{'user':user,'photos':images})
-    except User.DoesNotExist:
-        return HttpResponseNotFound("<h2>User not found</h2>")
+class UserInf(View):
+    def get(self,request,user_link):
+        try:
+            user = User.objects.get(link = user_link)
+            images = Photo.objects.filter(user_id=user.id).all()
+            return render(request, "info_user.html",{'user':user,'photos':images})
+        except User.DoesNotExist:
+            return HttpResponseNotFound("<h2>User not found</h2>")          
     
-    
-def login_user(request):
-    if request.method == "POST":
-        username = request.POST.get("username")
-        user = User.objects.get(username=username)
-        password = request.POST.get("password")
-        user = authenticate(request, username=username, password=password)
+class LoginUser(View):
+    def post(self,request):
+        user = login_user(request)
         if user is not None:
             login(request, user)
-            return redirect("http://127.0.0.1:8000/user/"+user.link)
+            return redirect(f"/user/{user.link}")
         else:
             return HttpResponse("<h1>fail try to login</h1>")
 
-def log(request):
-    users = User.objects.all()
-    return render(request,"login.html",{'users':users})
+class Log(View):
+    def get(self,request):
+        users = User.objects.all()
+        return render(request,"login.html",{'users':users})
 
 def logout_user(request,user_link):
     logout(request)
     return redirect("http://127.0.0.1:8000")
 
-
-def image_upload_view(request):
-    """Process images uploaded by users"""
-    if request.method == 'POST':
-        form = ImageForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-    else:
+class ImageUpload(View):
+    def get(self, request):
         form = ImageForm()
-    return render(request, 'add_photo.html', {'form': form})
+        return render(request, 'add_photo.html', {'form': form})
+    
+    def post(self,request):
+        form = image_upload(request)
+        return render(request, 'add_photo.html', {'form': form})
 
-@login_required(redirect_field_name='login_user/')
-def delete_photo(request, user_link, photo_id):
-    user = get_object_or_404(User, link=user_link)
-    photo = get_object_or_404(Photo, id=photo_id, user_id=user.id)
-    if request.user.id != photo.user_id:
-        return redirect('http://127.0.0.1:8000/login_user')
-    else:
-        photo.delete()
-        os.remove("media/"+str(photo.image))
-        return redirect('user_inf', user_link=user_link)
+@method_decorator(login_required, name='dispatch')
+class DeletePhoto(View):
+    def post(self,request, user_link, photo_id):
+        user = get_object_or_404(User, link=user_link)
+        photo = get_object_or_404(Photo, id=photo_id, user_id=user.id)
+        res = delete_photo(request, photo)
+        if res == "User isn't login or wrong user":
+            return redirect('/login_user')
+        else:
+            return redirect('user_inf', user_link=user_link)
 
-@login_required(redirect_field_name='login_user/')
-def like_photo(request, user_link, photo_id):
-    photo = get_object_or_404(Photo, id = photo_id)
-    try:
-        like = Likes.objects.get(photo_id=photo.id, user_id=request.user.id)
-        like.delete()
-        photo.like_count -=1
-        photo.save()
-        return redirect('user_inf', user_link=user_link)
-    except Likes.DoesNotExist:
-        like = Likes(photo_id=photo.id, user_id=request.user.id)
-        like.save()
-        photo.like_count +=1
-        photo.save()
-        return redirect('user_inf', user_link=user_link)
-
-@login_required(redirect_field_name='login_user/')
-def sub(request, user_link):
-    user = get_object_or_404(User, link = user_link)
-    if request.user.id != user.id:
+@method_decorator(login_required, name='dispatch')
+class LikePhoto(View):
+    def post(self,request, user_link, photo_id):
+        photo = get_object_or_404(Photo, id = photo_id)
         try:
-            sub_user = Subscriptions.objects.get(following_user_id=request.user, user_id = user)
-            sub_user.delete()
-            user.sub_count -=1
-            user.save()
+            like = Likes.objects.get(photo_id=photo.id, user_id=request.user.id)
+        except Likes.DoesNotExist:
+            like_photo(request,photo)
             return redirect('user_inf', user_link=user_link)
-        except Subscriptions.DoesNotExist:
-            new_sub = Subscriptions(following_user_id=request.user, user_id = user)
-            user.sub_count +=1
-            user.save()
-            new_sub.save()
+        else:
+            dislike_photo(request,photo,like)
             return redirect('user_inf', user_link=user_link)
-    else:
-        return HttpResponse("<h1>невозможно подписаться на самого себя, лучше найди друзей и тогда они смогут на тебя подписываться :( сори что давлю, но чувак реально найди друзей и все будет круто\</h1>")
 
+@method_decorator(login_required, name='dispatch')
+class SubUser(View):
+    def post(self,request, user_link):
+        user = get_object_or_404(User, link = user_link)
+        if request.user.id != user.id:
+            try:
+                sub_user = Subscriptions.objects.get(following_user_id=request.user, user_id = user)
+            except Subscriptions.DoesNotExist:
+                sub_on_user(request,user)
+                return redirect('user_inf', user_link=user_link)
+            else:
+                unsub_on_user(user,sub_user)
+                return redirect('user_inf', user_link=user_link)
+        else:
+            return HttpResponse("<h1>невозможно подписаться на самого себя, лучше найди друзей и тогда они смогут на тебя подписываться :( сори что давлю, но чувак реально найди друзей и все будет круто\</h1>")
 
-def home(request):
-    return render(request, "home.html")
+class HomePage(View):
+    def get(self,request):
+        return render(request,"home.html")
