@@ -79,6 +79,13 @@ class LikePhoto(View):
             return redirect('user_inf', user_link=user_link)
 
 @method_decorator(login_required, name='dispatch')
+class NewsFeed(View):
+    def get(self,request):
+        sub = get_object_or_404(User,id=request.user.id)
+        images = news_feed(sub)
+        return render(request,"news_feed.html",{'photos':images})
+        
+@method_decorator(login_required, name='dispatch')
 class SubUser(View):
     def post(self,request, user_link):
         user = get_object_or_404(User, link = user_link)

@@ -14,7 +14,8 @@ urlpatterns = [
     path("login_user/",Log.as_view()),
     path("login_user/loguser/",LoginUser.as_view()),
     path('upload/', ImageUpload.as_view()),
-    path('user/<str:user_link>/logout', logout_user, name='logout')
+    path('user/<str:user_link>/logout', logout_user, name='logout'),
+    path('news_feed', NewsFeed.as_view())
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL,

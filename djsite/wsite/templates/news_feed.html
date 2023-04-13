@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lenta</title>
+</head>
+<body>
+    {% for photo in photos %}
+    <div>
+        <a>Фото было добавлено {{photo.time_creation}}</a>
+        <h1>{{photo.title}}</h1>
+        <img src="{{ photo.image.url }}" alt="{{ photo.title }}">
+    </div>
+    {% endfor %}
+</body>
+</html>

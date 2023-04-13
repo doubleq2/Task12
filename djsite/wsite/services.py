@@ -1,7 +1,9 @@
 import os
+from datetime import datetime
 from django.contrib.auth import authenticate
-from wsite.models import *
+from django.shortcuts import get_object_or_404
 from wsite.forms import ImageForm
+from wsite.models import *
 
 def create_user(request,user):
     user.username = request.POST.get("username")
@@ -24,7 +26,9 @@ def login_user(request):
 def image_upload(request):
     form = ImageForm(request.POST, request.FILES)
     if form.is_valid():
-        form.save()
+        image = form.save(commit=False)
+        image.time_creation = datetime.now()
+        image.save()
     else:
         form = ImageForm()
     return form
@@ -59,3 +63,8 @@ def unsub_on_user(user,sub_user):
     sub_user.delete()
     user.sub_count -=1
     user.save()
+
+def news_feed(sub):
+    content_maker = get_object_or_404(Subscriptions,following_user_id=sub.id)
+    photo_list = Photo.objects.filter(user_id=content_maker.user_id).all()
+    return(photo_list)
